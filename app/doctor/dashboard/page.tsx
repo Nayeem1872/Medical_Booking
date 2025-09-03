@@ -382,7 +382,7 @@ export default function DoctorDashboard() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="text-green-600 border-green-200 hover:bg-green-50 bg-transparent"
+                                  className="text-green-600 border-green-600 hover:bg-green-600 hover:text-white"
                                 >
                                   <CheckCircle className="h-4 w-4 mr-1" />
                                   Complete
@@ -426,7 +426,7 @@ export default function DoctorDashboard() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="text-red-600 border-red-200 hover:bg-red-50 bg-transparent"
+                                  className="text-red-600 border-red-600 hover:bg-red-600 hover:text-white"
                                 >
                                   <XCircle className="h-4 w-4 mr-1" />
                                   Cancel
