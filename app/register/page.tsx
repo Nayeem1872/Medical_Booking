@@ -138,19 +138,19 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-blue-50 p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-teal-50 to-cyan-50 p-4 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute top-16 left-12 w-20 h-20 bg-green-100 rounded-full opacity-60 animate-pulse"></div>
-      <div className="absolute top-40 right-20 w-16 h-16 bg-blue-100 rounded-full opacity-40 animate-bounce"></div>
+      <div className="absolute top-40 right-20 w-16 h-16 bg-teal-100 rounded-full opacity-40 animate-bounce"></div>
       <div className="absolute bottom-24 left-16 w-24 h-24 bg-cyan-100 rounded-full opacity-50 animate-pulse"></div>
       <div className="absolute bottom-40 right-12 w-14 h-14 bg-green-200 rounded-full opacity-60 animate-bounce"></div>
 
       <Card className="w-full max-w-lg shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader className="text-center pb-6">
-          <div className="mx-auto mb-4 w-16 h-16 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg">
+          <div className="mx-auto mb-4 w-16 h-16 bg-[#118659] rounded-full flex items-center justify-center shadow-lg">
             <UserPlus className="w-8 h-8 text-white" />
           </div>
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+          <CardTitle className="text-3xl font-bold text-[#118659]">
             Create Account
           </CardTitle>
           <CardDescription className="text-gray-600 text-base">
@@ -168,14 +168,14 @@ export default function RegisterPage() {
                 value="patient"
                 className="flex items-center gap-2 h-10 font-medium data-[state=active]:bg-white data-[state=active]:shadow-md transition-all"
               >
-                <User className="h-4 w-4 text-green-600" />
+                <User className="h-4 w-4 text-[#118659]" />
                 Patient
               </TabsTrigger>
               <TabsTrigger
                 value="doctor"
                 className="flex items-center gap-2 h-10 font-medium data-[state=active]:bg-white data-[state=active]:shadow-md transition-all"
               >
-                <Stethoscope className="h-4 w-4 text-blue-600" />
+                <Stethoscope className="h-4 w-4 text-[#118659]" />
                 Doctor
               </TabsTrigger>
             </TabsList>
@@ -208,7 +208,7 @@ export default function RegisterPage() {
                       setPatientData({ ...patientData, name: e.target.value })
                     }
                     required
-                    className="h-12 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors"
+                    className="h-12 border-gray-200 focus:border-[#118659] focus:ring-[#118659] transition-colors"
                   />
                 </div>
 
@@ -228,7 +228,7 @@ export default function RegisterPage() {
                       setPatientData({ ...patientData, email: e.target.value })
                     }
                     required
-                    className="h-12 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors"
+                    className="h-12 border-gray-200 focus:border-[#118659] focus:ring-[#118659] transition-colors"
                   />
                 </div>
 
@@ -251,7 +251,7 @@ export default function RegisterPage() {
                       })
                     }
                     required
-                    className="h-12 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors"
+                    className="h-12 border-gray-200 focus:border-[#118659] focus:ring-[#118659] transition-colors"
                   />
                 </div>
 
@@ -272,13 +272,13 @@ export default function RegisterPage() {
                         photo_url: e.target.value,
                       })
                     }
-                    className="h-12 border-gray-200 focus:border-green-400 focus:ring-green-400 transition-colors"
+                    className="h-12 border-gray-200 focus:border-[#118659] focus:ring-[#118659] transition-colors"
                   />
                 </div>
 
                 <Button
                   type="submit"
-                  className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
+                  className="w-full h-12 bg-[#118659] hover:bg-[#0f7a50] text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
                   disabled={loading}
                 >
                   {loading ? (
@@ -324,7 +324,7 @@ export default function RegisterPage() {
                       setDoctorData({ ...doctorData, name: e.target.value })
                     }
                     required
-                    className="h-12 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors"
+                    className="h-12 border-gray-200 focus:border-[#118659] focus:ring-[#118659] transition-colors"
                   />
                 </div>
 
@@ -344,7 +344,7 @@ export default function RegisterPage() {
                       setDoctorData({ ...doctorData, email: e.target.value })
                     }
                     required
-                    className="h-12 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors"
+                    className="h-12 border-gray-200 focus:border-[#118659] focus:ring-[#118659] transition-colors"
                   />
                 </div>
 
@@ -364,7 +364,7 @@ export default function RegisterPage() {
                       setDoctorData({ ...doctorData, password: e.target.value })
                     }
                     required
-                    className="h-12 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors"
+                    className="h-12 border-gray-200 focus:border-[#118659] focus:ring-[#118659] transition-colors"
                   />
                 </div>
 
@@ -381,14 +381,14 @@ export default function RegisterPage() {
                       setDoctorData({ ...doctorData, specialization: value })
                     }
                   >
-                    <SelectTrigger className="h-12 border-gray-200 focus:border-blue-400 focus:ring-blue-400">
+                    <SelectTrigger className="h-12 border-gray-200 focus:border-[#118659] focus:ring-[#118659]">
                       <SelectValue placeholder="Select your specialization" />
                     </SelectTrigger>
                     <SelectContent>
                       {specializations.map((spec) => (
                         <SelectItem key={spec} value={spec} className="py-3">
                           <div className="flex items-center gap-2">
-                            <Stethoscope className="h-4 w-4 text-blue-500" />
+                            <Stethoscope className="h-4 w-4 text-[#118659]" />
                             {spec}
                           </div>
                         </SelectItem>
@@ -414,13 +414,13 @@ export default function RegisterPage() {
                         photo_url: e.target.value,
                       })
                     }
-                    className="h-12 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors"
+                    className="h-12 border-gray-200 focus:border-[#118659] focus:ring-[#118659] transition-colors"
                   />
                 </div>
 
                 <Button
                   type="submit"
-                  className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
+                  className="w-full h-12 bg-[#118659] hover:bg-[#0f7a50] text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
                   disabled={loading}
                 >
                   {loading ? (
@@ -454,7 +454,7 @@ export default function RegisterPage() {
               <span className="text-gray-600">Already have an account? </span>
               <Link
                 href="/login"
-                className="font-semibold text-blue-600 hover:text-blue-500 transition-colors duration-200"
+                className="font-semibold text-[#118659] hover:text-[#0f7a50] transition-colors duration-200"
               >
                 Sign in here
               </Link>

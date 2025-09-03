@@ -88,23 +88,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-teal-50 to-cyan-50 p-4 relative overflow-hidden">
       {/* Background decorative elements */}
-      <div className="absolute top-10 left-10 w-20 h-20 bg-blue-100 rounded-full opacity-60 animate-pulse"></div>
-      <div className="absolute top-32 right-16 w-16 h-16 bg-cyan-100 rounded-full opacity-40 animate-bounce"></div>
-      <div className="absolute bottom-20 left-20 w-24 h-24 bg-green-100 rounded-full opacity-50 animate-pulse"></div>
-      <div className="absolute bottom-32 right-10 w-12 h-12 bg-blue-200 rounded-full opacity-60 animate-bounce"></div>
+      <div className="absolute top-10 left-10 w-20 h-20 bg-green-100 rounded-full opacity-60 animate-pulse"></div>
+      <div className="absolute top-32 right-16 w-16 h-16 bg-teal-100 rounded-full opacity-40 animate-bounce"></div>
+      <div className="absolute bottom-20 left-20 w-24 h-24 bg-cyan-100 rounded-full opacity-50 animate-pulse"></div>
+      <div className="absolute bottom-32 right-10 w-12 h-12 bg-green-200 rounded-full opacity-60 animate-bounce"></div>
 
       <Card className="w-full max-w-md shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader className="text-center pb-8">
-          <div className="mx-auto mb-4 w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
-            <Heart className="w-8 h-8 text-white" />
+          <div className="mx-auto mb-4 w-16 h-16 bg-[#118659] rounded-full flex items-center justify-center shadow-lg">
+            <Stethoscope className="h-8 w-8 text-white" />
           </div>
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-            Welcome Back
+          <CardTitle className="text-3xl font-bold text-[#118659]">
+            Medical Portal
           </CardTitle>
           <CardDescription className="text-gray-600 text-base">
-            Sign in to your account to continue your healthcare journey
+            Sign in to access your healthcare services
           </CardDescription>
         </CardHeader>
         <CardContent className="px-8 pb-8">
@@ -128,7 +128,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-12 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors"
+                className="h-12 border-gray-200 focus:border-[#118659] focus:ring-[#118659] transition-colors"
               />
             </div>
 
@@ -143,7 +143,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="h-12 border-gray-200 focus:border-blue-400 focus:ring-blue-400 transition-colors"
+                className="h-12 border-gray-200 focus:border-[#118659] focus:ring-[#118659] transition-colors"
               />
             </div>
 
@@ -155,19 +155,19 @@ export default function LoginPage() {
                 value={role}
                 onValueChange={(value: "PATIENT" | "DOCTOR") => setRole(value)}
               >
-                <SelectTrigger className="h-12 border-gray-200 focus:border-blue-400 focus:ring-blue-400">
+                <SelectTrigger className="w-full h-12 border-gray-200 focus:border-[#118659] focus:ring-[#118659]">
                   <SelectValue placeholder="Select your role" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="PATIENT">
                     <div className="flex items-center gap-3">
-                      <User className="h-5 w-5 text-green-500" />
+                      <User className="h-5 w-5 text-[#118659]" />
                       <span>Patient</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="DOCTOR">
                     <div className="flex items-center gap-3">
-                      <Stethoscope className="h-5 w-5 text-blue-500" />
+                      <Stethoscope className="h-5 w-5 text-[#118659]" />
                       <span>Doctor</span>
                     </div>
                   </SelectItem>
@@ -177,7 +177,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
+              className="w-full h-12 bg-[#118659] hover:bg-[#0f7a50] text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
               disabled={loginMutation.isPending}
             >
               {loginMutation.isPending ? (
@@ -208,7 +208,7 @@ export default function LoginPage() {
               </span>
               <Link
                 href="/register"
-                className="font-semibold text-blue-600 hover:text-blue-500 transition-colors duration-200"
+                className="font-semibold text-[#118659] hover:text-[#0f7a50] transition-colors duration-200"
               >
                 Create one here
               </Link>
