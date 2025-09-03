@@ -5,6 +5,7 @@ import {
   DoctorsResponse,
   Appointment,
   AppointmentsResponse,
+  DoctorAppointmentsResponse,
 } from "./medical-api";
 
 export const queryKeys = {

@@ -300,22 +300,29 @@ export default function PatientAppointments() {
                       <Avatar className="h-12 w-12">
                         <AvatarImage
                           src={
-                            appointment.doctor.photo_url || "/placeholder.svg"
+                            appointment.doctor?.photo_url || "/placeholder.svg"
                           }
                         />
                         <AvatarFallback>
-                          {appointment.doctor.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
+                          {appointment.doctor
+                            ? appointment.doctor.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                            : "DR"}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <CardTitle className="text-lg">
-                          Dr. {appointment.doctor.name}
+                          {appointment.doctor
+                            ? `Dr. ${appointment.doctor.name}`
+                            : "Doctor"}
                         </CardTitle>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span>{appointment.doctor.specialization}</span>
+                          <span>
+                            {appointment.doctor?.specialization ||
+                              "Specialization"}
+                          </span>
                           <span className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
                             {formatDate(appointment.date)}
@@ -342,8 +349,11 @@ export default function PatientAppointments() {
                               </AlertDialogTitle>
                               <AlertDialogDescription>
                                 Are you sure you want to cancel your appointment
-                                with Dr. {appointment.doctor.name} on{" "}
-                                {formatDate(appointment.date)}? This action
+                                with{" "}
+                                {appointment.doctor
+                                  ? `Dr. ${appointment.doctor.name}`
+                                  : "your doctor"}{" "}
+                                on {formatDate(appointment.date)}? This action
                                 cannot be undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>

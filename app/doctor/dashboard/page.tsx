@@ -41,18 +41,11 @@ import {
   XCircle,
   CalendarIcon,
 } from "lucide-react";
-
-interface Appointment {
-  id: string;
-  date: string;
-  status: "PENDING" | "COMPLETED" | "CANCELLED";
-  patient: {
-    id: string;
-    name: string;
-    email: string;
-    photo_url?: string;
-  };
-}
+import {
+  useDoctorAppointments,
+  useUpdateAppointmentStatus,
+} from "@/lib/api/queries";
+import { Appointment } from "@/lib/api/medical-api";
 
 interface Doctor {
   id: string;
@@ -64,24 +57,24 @@ interface Doctor {
 }
 
 export default function DoctorDashboard() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [filteredAppointments, setFilteredAppointments] = useState<
-    Appointment[]
-  >([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [doctor, setDoctor] = useState<Doctor | null>(null);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    completed: 0,
-    cancelled: 0,
-  });
   const router = useRouter();
+
+  const {
+    data: appointmentsData,
+    isLoading,
+    error,
+    refetch,
+  } = useDoctorAppointments({
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    date: dateFilter || undefined,
+    page: currentPage,
+  });
+
+  const updateStatusMutation = useUpdateAppointmentStatus();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -99,99 +92,39 @@ export default function DoctorDashboard() {
     }
 
     setDoctor(parsedUser);
-    fetchAppointments();
-  }, [router, currentPage, statusFilter, dateFilter]);
+  }, [router]);
 
-  const fetchAppointments = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        ...(statusFilter !== "all" && { status: statusFilter }),
-        ...(dateFilter && { date: dateFilter }),
-      });
+  // Derived data from TanStack Query
+  const appointments = appointmentsData?.data || [];
+  const totalPages = appointmentsData?.totalPages || 1;
+  const loading = isLoading;
 
-      const response = await fetch(
-        `https://appointment-manager-node.onrender.com/api/v1/appointments/doctor?${params}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        const appointmentsList = data.appointments || [];
-        setAppointments(appointmentsList);
-        setFilteredAppointments(appointmentsList);
-        setTotalPages(Math.ceil((data.total || 0) / 10));
-
-        // Calculate stats
-        const total = appointmentsList.length;
-        const pending = appointmentsList.filter(
-          (apt: Appointment) => apt.status === "PENDING"
-        ).length;
-        const completed = appointmentsList.filter(
-          (apt: Appointment) => apt.status === "COMPLETED"
-        ).length;
-        const cancelled = appointmentsList.filter(
-          (apt: Appointment) => apt.status === "CANCELLED"
-        ).length;
-
-        setStats({ total, pending, completed, cancelled });
-      }
-    } catch (error) {
-      console.error("Error fetching appointments:", error);
-    } finally {
-      setLoading(false);
-    }
+  // Calculate stats from appointments
+  const stats = {
+    total: appointments.length,
+    pending: appointments.filter((apt) => apt.status === "PENDING").length,
+    completed: appointments.filter((apt) => apt.status === "COMPLETED").length,
+    cancelled: appointments.filter((apt) => apt.status === "CANCELLED").length,
   };
+
+  // Show error message if there's an error
+  if (error) {
+    console.error("Error fetching appointments:", error);
+  }
 
   const handleUpdateStatus = async (
     appointmentId: string,
     newStatus: "COMPLETED" | "CANCELLED"
   ) => {
-    setUpdatingId(appointmentId);
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        "https://appointment-manager-node.onrender.com/api/v1/appointments/update-status",
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            appointment_id: appointmentId,
-            status: newStatus,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        // Update the appointment in the local state for real-time UI update
-        setAppointments((prev) =>
-          prev.map((apt) =>
-            apt.id === appointmentId ? { ...apt, status: newStatus } : apt
-          )
-        );
-        setFilteredAppointments((prev) =>
-          prev.map((apt) =>
-            apt.id === appointmentId ? { ...apt, status: newStatus } : apt
-          )
-        );
-
-        // Refresh to get updated stats
-        fetchAppointments();
-      }
+      await updateStatusMutation.mutateAsync({
+        appointment_id: appointmentId,
+        status: newStatus,
+      });
+      // TanStack Query will automatically refetch and update the UI
+      refetch();
     } catch (error) {
       console.error("Error updating appointment status:", error);
-    } finally {
-      setUpdatingId(null);
     }
   };
 
@@ -387,7 +320,7 @@ export default function DoctorDashboard() {
               </Card>
             ))}
           </div>
-        ) : filteredAppointments.length === 0 ? (
+        ) : appointments.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
               <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -404,7 +337,7 @@ export default function DoctorDashboard() {
         ) : (
           <>
             <div className="space-y-4">
-              {filteredAppointments.map((appointment) => (
+              {appointments.map((appointment) => (
                 <Card key={appointment.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -412,23 +345,25 @@ export default function DoctorDashboard() {
                         <Avatar className="h-12 w-12">
                           <AvatarImage
                             src={
-                              appointment.patient.photo_url ||
+                              appointment.patient?.photo_url ||
                               "/placeholder.svg"
                             }
                           />
                           <AvatarFallback>
-                            {appointment.patient.name
+                            {appointment.patient?.name
                               .split(" ")
                               .map((n) => n[0])
-                              .join("")}
+                              .join("") || "P"}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <CardTitle className="text-lg">
-                            {appointment.patient.name}
+                            {appointment.patient?.name || "Unknown Patient"}
                           </CardTitle>
                           <CardDescription className="flex items-center gap-4">
-                            <span>{appointment.patient.email}</span>
+                            <span>
+                              {appointment.patient?.email || "No email"}
+                            </span>
                             <span className="flex items-center gap-1">
                               <Clock className="h-4 w-4" />
                               {formatDate(appointment.date)}
@@ -460,7 +395,9 @@ export default function DoctorDashboard() {
                                   </AlertDialogTitle>
                                   <AlertDialogDescription>
                                     Are you sure you want to mark this
-                                    appointment with {appointment.patient.name}{" "}
+                                    appointment with{" "}
+                                    {appointment.patient?.name ||
+                                      "this patient"}{" "}
                                     as completed?
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
@@ -473,10 +410,10 @@ export default function DoctorDashboard() {
                                         "COMPLETED"
                                       )
                                     }
-                                    disabled={updatingId === appointment.id}
+                                    disabled={updateStatusMutation.isPending}
                                     className="bg-green-600 text-white hover:bg-green-700"
                                   >
-                                    {updatingId === appointment.id
+                                    {updateStatusMutation.isPending
                                       ? "Updating..."
                                       : "Mark Completed"}
                                   </AlertDialogAction>
@@ -502,8 +439,10 @@ export default function DoctorDashboard() {
                                   </AlertDialogTitle>
                                   <AlertDialogDescription>
                                     Are you sure you want to cancel this
-                                    appointment with {appointment.patient.name}?
-                                    This action cannot be undone.
+                                    appointment with{" "}
+                                    {appointment.patient?.name ||
+                                      "this patient"}
+                                    ? This action cannot be undone.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -517,10 +456,10 @@ export default function DoctorDashboard() {
                                         "CANCELLED"
                                       )
                                     }
-                                    disabled={updatingId === appointment.id}
+                                    disabled={updateStatusMutation.isPending}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                   >
-                                    {updatingId === appointment.id
+                                    {updateStatusMutation.isPending
                                       ? "Cancelling..."
                                       : "Cancel Appointment"}
                                   </AlertDialogAction>

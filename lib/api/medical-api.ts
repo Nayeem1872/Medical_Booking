@@ -64,16 +64,33 @@ export interface Appointment {
   status: "PENDING" | "COMPLETED" | "CANCELLED";
   createdAt: string;
   updatedAt: string;
-  doctor: {
+  doctor?: {
     id: string;
     name: string;
     email: string;
     specialization: string;
     photo_url?: string;
   };
+  patient?: {
+    id: string;
+    name: string;
+    email: string;
+    photo_url?: string;
+  };
 }
 
 export interface AppointmentsResponse {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: Appointment[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface DoctorAppointmentsResponse {
   success: boolean;
   statusCode: number;
   message: string;
@@ -209,15 +226,16 @@ export const medicalApi = {
       date?: string;
       page?: number;
     } = {}
-  ): Promise<AppointmentsResponse> => {
+  ): Promise<DoctorAppointmentsResponse> => {
     const token = localStorage.getItem("token");
     const searchParams = {
-      ...(params.status && { status: params.status }),
+      ...(params.status &&
+        params.status !== "all" && { status: params.status }),
       ...(params.date && { date: params.date }),
       ...(params.page && { page: params.page.toString() }),
     };
 
-    const response = await axios.get<AppointmentsResponse>(
+    const response = await axios.get<DoctorAppointmentsResponse>(
       `${API_BASE_URL}/appointments/doctor`,
       {
         params: searchParams,
