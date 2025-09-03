@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,37 +27,65 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Search, CalendarIcon, LogOut, Clock, Stethoscope } from "lucide-react";
 import Link from "next/link";
 
-interface Doctor {
-  id: string;
-  name: string;
-  specialization: string;
-  photo_url?: string;
-}
-
-interface Patient {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  photo_url?: string;
-}
+// TanStack Query imports
+import {
+  useDoctors,
+  useAllDoctors,
+  useSpecializations,
+  useBookAppointment,
+} from "@/lib/api/queries";
+import { Doctor, Patient } from "@/lib/api/medical-api";
 
 export default function PatientDashboard() {
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
-  const [specializations, setSpecializations] = useState<string[]>([]);
+  // Local state
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSpecialization, setSelectedSpecialization] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>();
-  const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState("");
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const router = useRouter();
+
+  // TanStack Query hooks
+  const { data: specializations = [], isLoading: isLoadingSpecializations } =
+    useSpecializations();
+
+  // For paginated browsing (when no search term)
+  const {
+    data: doctorsResponse,
+    isLoading: isLoadingDoctors,
+    error: doctorsError,
+  } = useDoctors({
+    page: currentPage,
+    limit: 9,
+    specialization: selectedSpecialization,
+  });
+
+  // For search functionality (get all doctors)
+  const { data: allDoctors = [], isLoading: isLoadingAllDoctors } =
+    useAllDoctors({
+      specialization: selectedSpecialization,
+    });
+
+  const bookAppointmentMutation = useBookAppointment();
+
+  // Determine which data source to use
+  const isSearching = searchTerm.trim() !== "";
+  const doctors = isSearching ? allDoctors : doctorsResponse?.data || [];
+  const totalPages = isSearching ? 1 : doctorsResponse?.totalPages || 1;
+  const isLoading = isSearching ? isLoadingAllDoctors : isLoadingDoctors;
+
+  // Client-side search filtering (only when searching)
+  const filteredDoctors = useMemo(() => {
+    if (!isSearching) {
+      return doctors;
+    }
+    return allDoctors.filter((doctor) =>
+      doctor.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm, allDoctors, doctors, isSearching]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -69,12 +97,6 @@ export default function PatientDashboard() {
       return;
     }
 
-    // Debug: Log the raw userData to see what's actually stored
-    console.log("Raw userData from localStorage:", userData);
-    console.log("userData type:", typeof userData);
-    console.log("userData length:", userData.length);
-
-    // Check if userData is empty string or whitespace only
     if (userData.trim() === "") {
       console.log("Empty userData detected, clearing storage");
       localStorage.removeItem("token");
@@ -84,112 +106,58 @@ export default function PatientDashboard() {
     }
 
     console.log("userData", userData);
-    // try {
-
-    //   const parsedUser = JSON.parse(userData);
-    //   console.log("Successfully parsed user:", parsedUser);
-
-    //   if (!parsedUser || typeof parsedUser !== "object") {
-    //     throw new Error("Invalid user object");
-    //   }
-
-    //   if (parsedUser.role !== "PATIENT") {
-    //     console.log("User is not a patient, redirecting to login");
-    //     router.push("/login");
-    //     return;
-    //   }
-
-    //   setPatient(parsedUser);
-    //   fetchSpecializations();
-    //   fetchDoctors();
-    // } catch (error) {
-    //   console.error("Error parsing user data:", error);
-    //   console.error("Failed to parse userData:", JSON.stringify(userData));
-    //   // Clear corrupted data and redirect to login
-    //   localStorage.removeItem("token");
-    //   localStorage.removeItem("user");
-    //   router.push("/login");
-    // }
-  }, [router, currentPage, searchTerm, selectedSpecialization]);
-
-  const fetchSpecializations = async () => {
     try {
-      const response = await fetch(
-        "https://appointment-manager-node.onrender.com/api/v1/specializations"
-      );
-      const data = await response.json();
-      setSpecializations(data);
+      const parsedUser = JSON.parse(userData);
+      console.log("Successfully parsed user:", parsedUser);
+
+      if (!parsedUser || typeof parsedUser !== "object") {
+        throw new Error("Invalid user object");
+      }
+
+      if (parsedUser.role !== "PATIENT") {
+        console.log("User is not a patient, redirecting to login");
+        router.push("/login");
+        return;
+      }
+
+      setPatient(parsedUser);
     } catch (error) {
-      console.error("Error fetching specializations:", error);
+      console.error("Error parsing user data:", error);
+      console.error("Failed to parse userData:", JSON.stringify(userData));
+      // Clear corrupted data and redirect to login
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      router.push("/login");
     }
-  };
-
-  const fetchDoctors = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: "6",
-        ...(searchTerm && { search: searchTerm }),
-        ...(selectedSpecialization && {
-          specialization: selectedSpecialization,
-        }),
-      });
-
-      const response = await fetch(
-        `https://appointment-manager-node.onrender.com/api/v1/doctors?${params}`
-      );
-      const data = await response.json();
-
-      setDoctors(data.doctors || []);
-      setFilteredDoctors(data.doctors || []);
-      setTotalPages(Math.ceil((data.total || 0) / 6));
-    } catch (error) {
-      console.error("Error fetching doctors:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [router]);
 
   const handleBookAppointment = async () => {
     if (!selectedDoctor || !selectedDate) return;
 
-    setBookingLoading(true);
     setBookingError("");
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        "https://appointment-manager-node.onrender.com/api/v1/appointments",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            doctorId: selectedDoctor.id,
-            date: selectedDate.toISOString().split("T")[0],
-          }),
-        }
-      );
+      await bookAppointmentMutation.mutateAsync({
+        doctorId: selectedDoctor.id,
+        date: selectedDate.toISOString().split("T")[0],
+      });
 
-      const data = await response.json();
+      setBookingSuccess(true);
+      setSelectedDate(undefined);
+      setTimeout(() => {
+        setBookingSuccess(false);
+        setSelectedDoctor(null);
+      }, 2000);
+    } catch (error: unknown) {
+      let errorMessage = "Network error. Please try again.";
 
-      if (response.ok) {
-        setBookingSuccess(true);
-        setSelectedDate(undefined);
-        setTimeout(() => {
-          setBookingSuccess(false);
-          setSelectedDoctor(null);
-        }, 2000);
-      } else {
-        setBookingError(data.message || "Booking failed");
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as {
+          response?: { data?: { message?: string } };
+        };
+        errorMessage = axiosError.response?.data?.message || errorMessage;
       }
-    } catch (error) {
-      setBookingError("Network error. Please try again.");
-    } finally {
-      setBookingLoading(false);
+      setBookingError(errorMessage);
     }
   };
 
@@ -250,13 +218,22 @@ export default function PatientDashboard() {
             <Input
               placeholder="Search doctors by name..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                // Reset page when starting to search
+                if (e.target.value.trim() === "") {
+                  setCurrentPage(1);
+                }
+              }}
               className="pl-10"
             />
           </div>
           <Select
             value={selectedSpecialization}
-            onValueChange={setSelectedSpecialization}
+            onValueChange={(value) => {
+              setSelectedSpecialization(value === "all" ? "" : value);
+              setCurrentPage(1); // Reset to first page when filter changes
+            }}
           >
             <SelectTrigger className="w-full sm:w-64">
               <SelectValue placeholder="Filter by specialization" />
@@ -272,8 +249,19 @@ export default function PatientDashboard() {
           </Select>
         </div>
 
+        {/* Search Results Info */}
+        {isSearching && (
+          <div className="mb-4 text-sm text-muted-foreground">
+            {isLoading
+              ? "Searching..."
+              : `Found ${filteredDoctors.length} doctor${
+                  filteredDoctors.length !== 1 ? "s" : ""
+                } matching "${searchTerm}"`}
+          </div>
+        )}
+
         {/* Doctors Grid */}
-        {loading ? (
+        {isLoadingDoctors ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
               <Card key={i} className="animate-pulse">
@@ -372,10 +360,13 @@ export default function PatientDashboard() {
 
                             <Button
                               onClick={handleBookAppointment}
-                              disabled={!selectedDate || bookingLoading}
+                              disabled={
+                                !selectedDate ||
+                                bookAppointmentMutation.isPending
+                              }
                               className="w-full"
                             >
-                              {bookingLoading
+                              {bookAppointmentMutation.isPending
                                 ? "Booking..."
                                 : "Confirm Appointment"}
                             </Button>
@@ -388,15 +379,15 @@ export default function PatientDashboard() {
               ))}
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
+            {/* Pagination - Only show when not searching */}
+            {!isSearching && totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-8">
                 <Button
                   variant="outline"
                   onClick={() =>
                     setCurrentPage((prev) => Math.max(prev - 1, 1))
                   }
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || isLoading}
                 >
                   Previous
                 </Button>
@@ -408,7 +399,7 @@ export default function PatientDashboard() {
                   onClick={() =>
                     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                   }
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || isLoading}
                 >
                   Next
                 </Button>

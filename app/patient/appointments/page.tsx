@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,36 +26,47 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar, Clock, LogOut, Stethoscope, XCircle } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  LogOut,
+  Stethoscope,
+  XCircle,
+  Filter,
+} from "lucide-react";
 import Link from "next/link";
 
-interface Appointment {
-  id: string;
-  date: string;
-  status: "PENDING" | "COMPLETED" | "CANCELLED";
-  doctor: {
-    id: string;
-    name: string;
-    specialization: string;
-    photo_url?: string;
-  };
-}
-
-interface Patient {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  photo_url?: string;
-}
+// TanStack Query imports
+import {
+  usePatientAppointments,
+  useUpdateAppointmentStatus,
+} from "@/lib/api/queries";
+import { Patient, Appointment } from "@/lib/api/medical-api";
 
 export default function PatientAppointments() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Local state
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const router = useRouter();
+
+  // TanStack Query hooks
+  const {
+    data: appointmentsResponse,
+    isLoading,
+    error: appointmentsError,
+  } = usePatientAppointments({
+    page: currentPage,
+    ...(statusFilter && { status: statusFilter }),
+  });
+
+  const updateStatusMutation = useUpdateAppointmentStatus();
+
+  // Extract appointments data and pagination info
+  const appointments = appointmentsResponse?.data || [];
+  const totalPages = appointmentsResponse?.totalPages || 1;
+  const total = appointmentsResponse?.total || 0;
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -58,69 +77,38 @@ export default function PatientAppointments() {
       return;
     }
 
-    const parsedUser = JSON.parse(userData);
-    if (parsedUser.role !== "PATIENT") {
+    try {
+      const parsedUser = JSON.parse(userData);
+      if (parsedUser.role !== "PATIENT") {
+        router.push("/login");
+        return;
+      }
+      setPatient(parsedUser);
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
       router.push("/login");
-      return;
     }
-
-    setPatient(parsedUser);
-    fetchAppointments();
   }, [router]);
 
-  const fetchAppointments = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        "https://appointment-manager-node.onrender.com/api/v1/appointments/patient",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setAppointments(data.appointments || []);
-      } else {
-        setError("Failed to fetch appointments");
-      }
-    } catch (error) {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCancelAppointment = async (appointmentId: string) => {
-    setCancellingId(appointmentId);
+    setError("");
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `https://appointment-manager-node.onrender.com/api/v1/appointments/${appointmentId}/cancel`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      await updateStatusMutation.mutateAsync({
+        status: "CANCELLED",
+        appointment_id: appointmentId,
+      });
+    } catch (error: unknown) {
+      let errorMessage = "Failed to cancel appointment";
 
-      if (response.ok) {
-        setAppointments(
-          appointments.map((apt) =>
-            apt.id === appointmentId ? { ...apt, status: "CANCELLED" } : apt
-          )
-        );
-      } else {
-        setError("Failed to cancel appointment");
+      if (error && typeof error === "object" && "response" in error) {
+        const response = (
+          error as { response?: { data?: { message?: string } } }
+        ).response;
+        errorMessage = response?.data?.message || errorMessage;
       }
-    } catch (error) {
-      setError("Network error. Please try again.");
-    } finally {
-      setCancellingId(null);
+      setError(errorMessage);
     }
   };
 
@@ -197,13 +185,66 @@ export default function PatientAppointments() {
           </p>
         </div>
 
-        {error && (
+        {/* Filters and Stats */}
+        <div className="mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Filter by status:</span>
+              </div>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value === "all" ? "" : value);
+                  setCurrentPage(1); // Reset to first page when filter changes
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="All appointments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All appointments</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              {statusFilter && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter("");
+                    setCurrentPage(1);
+                  }}
+                >
+                  Clear Filter
+                </Button>
+              )}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {isLoading
+                ? "Loading..."
+                : `${total} appointment${total !== 1 ? "s" : ""} total`}
+            </div>
+          </div>
+        </div>
+
+        {(error || appointmentsError) && (
           <Alert variant="destructive" className="mb-6">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              {error ||
+                (appointmentsError &&
+                typeof appointmentsError === "object" &&
+                "message" in appointmentsError
+                  ? (appointmentsError as { message: string }).message
+                  : "Failed to load appointments")}
+            </AlertDescription>
           </Alert>
         )}
 
-        {loading ? (
+        {isLoading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
               <Card key={i} className="animate-pulse">
@@ -224,16 +265,29 @@ export default function PatientAppointments() {
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">
-                No appointments found
+                {statusFilter
+                  ? `No ${statusFilter.toLowerCase()} appointments found`
+                  : "No appointments found"}
               </h3>
               <p className="text-muted-foreground mb-4">
-                You don&apos;t have any appointments scheduled yet
+                {statusFilter
+                  ? `You don't have any ${statusFilter.toLowerCase()} appointments${
+                      statusFilter === "PENDING" ? " yet" : ""
+                    }`
+                  : "You don't have any appointments scheduled yet"}
               </p>
-              <Button asChild>
-                <Link href="/patient/dashboard">
-                  Book Your First Appointment
-                </Link>
-              </Button>
+              {!statusFilter && (
+                <Button asChild>
+                  <Link href="/patient/dashboard">
+                    Book Your First Appointment
+                  </Link>
+                </Button>
+              )}
+              {statusFilter && (
+                <Button variant="outline" onClick={() => setStatusFilter("")}>
+                  Show All Appointments
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -301,10 +355,10 @@ export default function PatientAppointments() {
                                 onClick={() =>
                                   handleCancelAppointment(appointment.id)
                                 }
-                                disabled={cancellingId === appointment.id}
+                                disabled={updateStatusMutation.isPending}
                                 className="bg-red-600 hover:bg-red-700"
                               >
-                                {cancellingId === appointment.id
+                                {updateStatusMutation.isPending
                                   ? "Cancelling..."
                                   : "Cancel Appointment"}
                               </AlertDialogAction>
@@ -317,6 +371,36 @@ export default function PatientAppointments() {
                 </CardHeader>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!isLoading && appointments.length > 0 && totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-8">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1 || isLoading}
+            >
+              Previous
+            </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              {isLoading && (
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              )}
+            </div>
+            <Button
+              variant="outline"
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              disabled={currentPage === totalPages || isLoading}
+            >
+              Next
+            </Button>
           </div>
         )}
       </div>

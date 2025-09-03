@@ -24,72 +24,66 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Stethoscope, User, Heart } from "lucide-react";
+import { useLogin } from "@/lib/api/queries";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"PATIENT" | "DOCTOR" | "">("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  const loginMutation = useLogin();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
 
     if (!email || !password || !role) {
       setError("Please fill in all fields");
-      setLoading(false);
       return;
     }
 
     try {
-      const response = await fetch(
-        "https://appointment-manager-node.onrender.com/api/v1/auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password, role }),
+      const response = await loginMutation.mutateAsync({
+        email,
+        password,
+        role,
+      });
+
+      console.log("Login response data:", response);
+      console.log("User data to store:", response.data.user);
+      console.log("Token to store:", response.data.token);
+
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+
+      // Verify what was actually stored
+      const storedUser = localStorage.getItem("user");
+      console.log("Stored user data:", storedUser);
+
+      setTimeout(() => {
+        // Redirect based on role
+        if (role === "PATIENT") {
+          router.replace("/patient/dashboard");
+        } else {
+          router.replace("/doctor/dashboard");
         }
-      );
+      }, 100);
+    } catch (err: unknown) {
+      let errorMessage = "Login failed";
 
-      const data = await response.json();
-
-      if (response.ok) {
-        try {
-          console.log("Login response data:", data);
-          console.log("User data to store:", data.user);
-          console.log("Token to store:", data.token);
-
-          localStorage.setItem("token", data.token);
-          localStorage.setItem("user", JSON.stringify(data.user));
-
-          // Verify what was actually stored
-          const storedUser = localStorage.getItem("user");
-          console.log("Stored user data:", storedUser);
-
-          setTimeout(() => {
-            // Redirect based on role
-            if (role === "PATIENT") {
-              router.replace("/patient/dashboard");
-            } else {
-              router.replace("/doctor/dashboard");
-            }
-          }, 100);
-        } catch (storageError) {
-          console.error("Error storing user data:", storageError);
-          setError("Failed to save login data. Please try again.");
+      if (err && typeof err === "object") {
+        if ("response" in err) {
+          const response = (
+            err as { response?: { data?: { message?: string } } }
+          ).response;
+          errorMessage = response?.data?.message || errorMessage;
+        } else if ("message" in err) {
+          errorMessage = (err as { message: string }).message || errorMessage;
         }
-      } else {
-        setError(data.message || "Login failed");
       }
-    } catch (err) {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
+      setError(errorMessage);
     }
   };
 
@@ -184,9 +178,9 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
-              disabled={loading}
+              disabled={loginMutation.isPending}
             >
-              {loading ? (
+              {loginMutation.isPending ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Signing in...
